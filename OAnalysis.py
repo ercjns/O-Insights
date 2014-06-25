@@ -12,19 +12,28 @@ class oRacePlotting:
 
     def plotTimeBehindLeader(race, debug=False):
         #get splits at each control for each runner
+        leader = []
+        farthestbehind = 0
         for i in range(1,race.controls+1):
             order = race.orderAtControl(i)
-            fastest = order[0].splits[str(i)][0]
+            fastest = order[0].splits[str(i)][0].toSeconds()
+            leader.append((fastest, i))
             for runner in order:
-                behind = runner.splits[str(i)][0] - fastest
-                runner.tbhldata.append((fastest.toSeconds(), behind.toSeconds()))
-                if debug: print("At control %d: %s is %d behind" % i, runner.name, behind)
+                behind = runner.splits[str(i)][0].toSeconds() - fastest
+                farthestbehind = behind if behind > farthestbehind else farthestbehind
+                runner.tbhldata.append((fastest, behind))
+                if debug: print("At control %d: %s is %d behind" % (i, runner.name, behind))
+
 
         #display the data
         for runner in race.runners:
             if runner.status == False: continue
             x,y = ([x for x,y in runner.tbhldata], [-y for x,y in runner.tbhldata])
             plt.plot(x,y, 'x-')
+        for time,control in leader:
+            plt.axvline(x=time, color='k', ls='--')
+        plt.xticks([t for t,c in leader], [c for t,c in leader])
+        plt.yticks([-x for x in range(0,farthestbehind,600)])
         plt.show()
 
     def plotPerformanceIndex(race, debug=False):
@@ -205,11 +214,11 @@ class winSplitsScraper:
         return res
 
 if __name__ == "__main__":
-    x = winSplitsScraper('winsplits_140201_p7m_wiol_7.html')
+    x = winSplitsScraper('./data/winsplits_140201_p7m_wiol_7.html')
     race = x.scrapeRaceResults()
 
     # race.orderAtControl(1, True)
-    oRacePlotting.plotTimeBehindLeader(race)
+    oRacePlotting.plotTimeBehindLeader(race, True)
 
     #
     # print(race.timeLostOnLeg(4))
