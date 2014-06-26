@@ -4,6 +4,7 @@
 # WinSplits Scraping and Analysis
 
 import Crono
+from numpy import mean
 import matplotlib.pyplot as plt
 from bs4 import BeautifulSoup
 
@@ -11,7 +12,12 @@ from bs4 import BeautifulSoup
 class oRacePlotting:
 
     def plotTimeBehindLeader(race, debug=False):
-        #get splits at each control for each runner
+        '''
+        Plot the time behind the leader at each control, as if all racers had
+        started at the same time, rather than a staggered start.
+        '''
+
+        #get split time at each control for each runner
         leader = []
         farthestbehind = 0
         for i in range(1,race.controls+1):
@@ -33,15 +39,46 @@ class oRacePlotting:
         for time,control in leader:
             plt.axvline(x=time, color='k', ls='--')
         plt.xticks([t for t,c in leader], [c for t,c in leader])
-        plt.yticks([-x for x in range(0,farthestbehind,600)])
+        plt.xlabel("Control")
+        ypoints = [-x for x in range(0, farthestbehind, 600)]
+        ylabels = [Crono.Time(0,x*5,0) for x in range((len(ypoints)))]
+        plt.yticks(ypoints, ylabels)
+        plt.ylabel("Minutes Behind Leader")
+        plt.title("Time Behind Leader")
         plt.show()
+
 
     def plotPerformanceIndex(race, debug=False):
         '''
         A runner's performance index on a leg is defined as the average of the
         fastest 25% split times on that leg divided by the runner's split time
         '''
-        pass
+
+        #define the performance baseline for a leg
+
+
+        for i in range(1,race.controls+1):
+            legorder = race.orderOnLeg(i)
+
+            numracers = len(legorder)
+            numtopracers = int(numracers/4)
+
+            toplegrunners = legorder[0:numtopracers]
+            toplegs = [runner.legs[str(i)][0].toSeconds() for runner in toplegrunners]
+            race.pibaseline[str(i)] = mean(toplegs)
+            if debug: print("Baseline for leg %d is %.2f seconds" %( i, mean(toplegs)))
+
+        # Calculate PI on each leg for each runner
+            for runner in legorder:
+                pi = race.pibaseline[str(i)] / runner.legs[str(i)][0].toSeconds()
+                runner.pidata.append((i,pi))
+            if debug: print(runner.pidata[i-1])
+
+        #plot the results
+        #need to bucketize the data
+        #plot count in each PI bucket (10% buckets?) for each runner.
+
+
 
 
 class oRaceResults:
@@ -50,6 +87,8 @@ class oRaceResults:
     def __init__(self):
         self.runners = []
         self.controls = 0
+
+        self.pibaseline = dict()
 
     def addRunner(self, runner):
         self.runners.append(runner)
@@ -116,6 +155,7 @@ class oRunnerResult:
         self.status = True if self.time else False
 
         self.tbhldata = []
+        self.pidata = []
 
 
 class winSplitsScraper:
@@ -218,7 +258,7 @@ if __name__ == "__main__":
     race = x.scrapeRaceResults()
 
     # race.orderAtControl(1, True)
-    oRacePlotting.plotTimeBehindLeader(race, True)
+    oRacePlotting.plotPerformanceIndex(race, True)
 
     #
     # print(race.timeLostOnLeg(4))
