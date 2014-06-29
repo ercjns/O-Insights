@@ -61,7 +61,7 @@ class oRacePlotting:
             legorder = race.orderOnLeg(i)
 
             numracers = len(legorder)
-            numtopracers = int(numracers/4)
+            numtopracers = round(numracers/4)
 
             toplegrunners = legorder[0:numtopracers]
             toplegs = [runner.legs[str(i)][0].toSeconds() for runner in toplegrunners]
@@ -72,13 +72,32 @@ class oRacePlotting:
             for runner in legorder:
                 pi = race.pibaseline[str(i)] / runner.legs[str(i)][0].toSeconds()
                 runner.pidata.append((i,pi))
-            if debug: print(runner.pidata[i-1])
+            # if debug: print(runner.pidata[i-1])
+
+
+        # Bucketize the PI data for each runner
+        for runner in race.runners:
+            for leg,pi in runner.pidata:
+                picat = int(round(pi,1)*100)
+                runner.pihist[picat] = runner.pihist.get(picat,0) + 1
+
+            if debug: print(runner.name, runner.pihist)
 
         #plot the results
-        #need to bucketize the data
-        #plot count in each PI bucket (10% buckets?) for each runner.
+            plt.hist(histtolist(runner.pihist), histtype="step")
+
+        plt.xlabel("Performance Index")
+        plt.ylabel("Number of Legs")
+        plt.title("Performance Index Spread for All Runners")
+        plt.show()
 
 
+def histtolist(d):
+    l = []
+    for k,v in d.items():
+        for i in range(v):
+            l.append(k)
+    return l
 
 
 class oRaceResults:
@@ -156,6 +175,7 @@ class oRunnerResult:
 
         self.tbhldata = []
         self.pidata = []
+        self.pihist = {}
 
 
 class winSplitsScraper:
