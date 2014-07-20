@@ -1,0 +1,13 @@
+Runner Object:
+	implement "tags" for a runner to exist on a course in a specific category, but really just allow runner objects to exist as children of the event.
+
+GUI things:
+	scraper - file load - some sort of error checking to figure out if we're going to be able to parse the file or not.
+
+
+Plotting Classes / Module:
+	Time behind leader
+	Time lost per control
+	Performance Index
+	Bad/Good Controls (for an individual)
+	Easy/Hard Controls (for a course)

@@ -66,14 +66,12 @@ class oRacePlotting:
             toplegrunners = legorder[0:numtopracers]
             toplegs = [runner.legs[str(i)][0].toSeconds() for runner in toplegrunners]
             race.pibaseline[str(i)] = mean(toplegs)
-            if debug: print("Baseline for leg %d is %.2f seconds" %( i, mean(toplegs)))
+            # if debug: print("Baseline for leg %d is %.2f seconds" %( i, mean(toplegs)))
 
         # Calculate PI on each leg for each runner
             for runner in legorder:
                 pi = race.pibaseline[str(i)] / runner.legs[str(i)][0].toSeconds()
                 runner.pidata.append((i,pi))
-            # if debug: print(runner.pidata[i-1])
-
 
         # Bucketize the PI data for each runner
         for runner in race.runners:
@@ -81,10 +79,13 @@ class oRacePlotting:
                 picat = int(round(pi,1)*100)
                 runner.pihist[picat] = runner.pihist.get(picat,0) + 1
 
-            if debug: print(runner.name, runner.pihist)
+            # if debug: print(runner.name, runner.pihist)
 
         #plot the results
-            plt.hist(histtolist(runner.pihist), histtype="step")
+            x, y = histtoxy(runner.pihist)
+            plt.scatter(x,y)
+            # plt.plot(histtoxy(runner.pihist))
+            # plt.hist(histtolist(runner.pihist), histtype="step")
 
         plt.xlabel("Performance Index")
         plt.ylabel("Number of Legs")
@@ -98,6 +99,14 @@ def histtolist(d):
         for i in range(v):
             l.append(k)
     return l
+
+def histtoxy(d):
+    x = []
+    y = []
+    for k,v in d.items():
+        x.append(k)
+        y.append(v)
+    return ((x,y))
 
 
 class oRaceResults:
@@ -276,6 +285,8 @@ class winSplitsScraper:
 if __name__ == "__main__":
     x = winSplitsScraper('./data/winsplits_140201_p7m_wiol_7.html')
     race = x.scrapeRaceResults()
+
+    race.runners = race.runners[:]
 
     # race.orderAtControl(1, True)
     oRacePlotting.plotPerformanceIndex(race, True)
