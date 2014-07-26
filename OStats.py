@@ -10,6 +10,10 @@ import tkinter as tk
 import tkinter.filedialog as tkfd
 import tkinter.messagebox as tkmess
 
+###########################
+#      MODEL
+###########################
+
 class OEvent:
 	''' Represents an O event, with Courses and Runners '''
 	def __init__(self, name="Name", runners=[], courses=[]):
@@ -95,31 +99,38 @@ class WinSplitsScrape:
 		self.file = file
 		self.soup = BeautifulSoup(open(self.file))
 		rows = self.soup.find_all('tr')
-		#row 0 is sorting headers
-		self.head = rows[1].find_all('td') #legs and control codes
-		self.data = rows[2:] #runner data, 2rows per runner
+		if rows:
+			#row 0 is sorting headers
+			self.head = rows[1].find_all('td') #legs and control codes
+			self.data = rows[2:] #runner data, 2rows per runner
+			return
+		else:
+			return None
 
 	def getCourse(self):
 		''' returns a OStats.Course object based on the given file '''
-		flags = [0]  #init with '0' to represent the start punch.
-		leginfoRE = re.compile('\-(([1-9][0-9]*)|[F])'
-							   '( \([0-9]{3}\))?') #control code optional for 'F'
-		for i in self.head:
-			text = leginfoRE.search(i.string)
-			if text != None:
-				leg, code = text.group(1,3)
-				try:
-					leg = int(leg)
-					code = int(code.strip(' \(\)'))
-					flags.append(code)
-					if flags[leg] != code:
-						raise IndexError("Missed a control somewhere")
-				except ValueError:
-					if leg == 'F': flags.append(999)
-					else: raise ValueError("Control code not recognized")
+		try:
+			flags = [0]  #init with '0' to represent the start punch.
+			leginfoRE = re.compile('\-(([1-9][0-9]*)|[F])'
+								   '( \([0-9]{3}\))?') #control code optional for 'F'
+			for i in self.head:
+				text = leginfoRE.search(i.string)
+				if text != None:
+					leg, code = text.group(1,3)
+					try:
+						leg = int(leg)
+						code = int(code.strip(' \(\)'))
+						flags.append(code)
+						if flags[leg] != code:
+							raise IndexError("Missed a control somewhere")
+					except ValueError:
+						if leg == 'F': flags.append(999)
+						else: raise ValueError("Control code not recognized")
 
-		pairs = tuple((flags[i], flags[i+1]) for i in range(len(flags)-1))
-		return(Course(order=pairs))
+			pairs = tuple((flags[i], flags[i+1]) for i in range(len(flags)-1))
+			return(Course(order=pairs))
+		except:
+			return None
 
 	def getRunners(self, course):
 		''' returns a list of OStats.Runner objects '''
@@ -188,75 +199,91 @@ class WinSplitsScrape:
 		return(h*3600 + m*60 + s)
 
 
+#############################
+#          VIEW
+#############################
+
+
+class Application(tk.Frame):
+	def __init__(self, master=None):
+		tk.Frame.__init__(self, master)
+		self.c = ctrl(self)
+		self.pack()
+		self.viewInit()
+
+	def clearFrame(self):
+		for child in self.winfo_children():
+			child.destroy()
+
+	def openOld(self):
+		tkmess.showwarning(self, message="You can't do this yet.")
+		return None
+
+	def openNew(self):
+		#file open prompt
+		file = tkfd.askopenfile()
+		if not file:
+			tkmess.showwarning(root, message="No file selected")
+			return
+		#parse the file
+		parse = self.c.loadFile(file)
+		if not parse:
+			return
+		#load a new view
+		self.viewRunnerList()
+
+	def viewRunnerList(self):
+		self.clearFrame()
+		for r in self.c.getRunnerList():
+			l = tk.Label(self, text="Runner: " + r.name)
+			l.pack()
+
+
+	def viewInit(self):
+		self.clearFrame()
+		b1 = tk.Button(self, text="Open previous from csv", command=self.openOld)
+		b2 = tk.Button(self, text="New from winsplits html", command=self.openNew)
+		b1.pack()
+		b2.pack()
+
+
+##############################
+#      CONTROLLER
+##############################
+
+class ctrl():
+	def __init__(self, app=None):
+		self.app = app
+
+	def loadFile(self, file):
+		scraper = WinSplitsScrape(file.name)
+		if type(scraper.getCourse()) != type(Course()):
+			print("not a course")
+			tkmess.showwarning(self.app, message="File not recognized")
+			return None
+		else:
+			print("found a course")
+			#ask for a name of the event
+			#eventnameprompt = tkmess.showinfo(root, message="name is not implemented")
+			#courseinfoprompt = tkmess.showinfo(root, message="course info goes here")
+			#do some processing
+			e = OEvent("eventname")
+			self.event = e
+			c = scraper.getCourse()
+			e.courses.append(c)
+			rs = scraper.getRunners(c)
+			for r in rs:
+				e.runners.append(r)
+			return True
+
+	def getRunnerList(self):
+		return self.event.runners
+
 
 
 
 if __name__ == "__main__":
-
-	def openOld():
-		tkmess.showwarning(root, message="You can't do this yet.")
-		return None
-
-	def openNew():
-
-		#ask for a name of the event
-		eventnameprompt = tkmess.showinfo(root, message="name is not implemented")
-
-		#ask for the first file to parse
-		file = tkfd.askopenfile()
-
-		if file:
-			#try to parse the file
-			scraper = WinSplitsScrape(file.name)
-			print(scraper.getCourse())
-
-			#redraw the tk window with info / buttons
-			# root.clear?
-			# show event name, courses, runner names, way to import more.
-
-		else:
-			tkmess.showwarning(root, message="No file selected")
-
-
-
 	root = tk.Tk()
-	root.title("Orienteering Stats")
-
-	l = tk.Label(root, text="Welcome. Nothing to see here.")
-	l.pack()
-
-	b1 = tk.Button(root, text="Open previous from csv", command=openOld)
-	b2 = tk.Button(root, text="New from winsplits html", command=openNew)
-
-	b1.pack()
-	b2.pack()
-
-	root.mainloop()
-
-
-	# #initialize an OEvent
-	# wiol7 = OEvent("WIOL 7")
-	#
-	# #scrape race data
-	# scraper = WinSplitsScrape("./data/winsplits_140201_p7m_wiol_7.html")
-	#
-	# #create a course, add to the event
-	# wiol7.courses.append(scraper.getCourse())
-	#
-	# #add runners to the event
-	# newrunners = scraper.getRunners(wiol7.courses[0])
-	#
-	# for r in newrunners:
-	# 	wiol7.runners.append(r)
-	#
-	# #repeat for other race data
-	#
-	# #see what we got...
-	# # for r in wiol7.runners:
-	# # 	print(r.name, r.finishstatus, r.finishtime)
-	#
-	# for r in wiol7.runners:
-	# 	if r.name == "Christian Whitmyre":
-	# 		for p in r.punches:
-	# 			print(p)
-	#
+	app = Application(master=root)
+	app.mainloop()
+	root.destroy()

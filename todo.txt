@@ -1,8 +1,17 @@
+Investigate index error when trying to load WIOL champs file
+
+Clean up MVC implementation!
+	Getters and setters in the right place
+	Get the model out of the view!
+	controller should do more.
+	figure out loading warning messages from controller
+	figure out if controller can ask for prompts from view to complete a task
+
+
+
 Runner Object:
 	implement "tags" for a runner to exist on a course in a specific category, but really just allow runner objects to exist as children of the event.
 
-GUI things:
-	scraper - file load - some sort of error checking to figure out if we're going to be able to parse the file or not.
 
 
 Plotting Classes / Module:
